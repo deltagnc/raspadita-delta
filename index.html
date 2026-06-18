@@ -187,8 +187,7 @@
     let patenteCliente = "";
     const TELEFONO_ESTACION = "5491127098175";
     const TIEMPO_ESPERA_MINUTOS = 120;
-
-    function validarYEmpezar() {
+function validarYEmpezar() {
         const inputPatente = document.getElementById('reg-patente');
         const msgError = document.getElementById('mensaje-error');
         patenteCliente = inputPatente.value.trim().toUpperCase();
@@ -199,24 +198,32 @@
             return;
         }
 
-        const registroCargas = JSON.parse(localStorage.getItem('gnc_registro_patentes') || '{}');
-        const ahora = Date.now();
+        // Obtenemos la fecha actual en formato YYYY-MM-DD
+        const hoy = new Date().toISOString().split('T')[0];
+        const registroCargas = JSON.parse(localStorage.getItem('gnc_registro_diario') || '{}');
 
-        if (registroCargas[patenteCliente]) {
-            const tiempoTranscurrido = (ahora - registroCargas[patenteCliente]) / 1000 / 60;
-            if (tiempoTranscurrido < TIEMPO_ESPERA_MINUTOS) {
-                const faltan = Math.ceil(TIEMPO_ESPERA_MINUTOS - tiempoTranscurrido);
-                msgError.innerText = `Esta patente ya jugó. Falta: ${faltan} min.`;
-                msgError.style.display = 'block';
-                return;
-            }
+        // Estructura: { "AF123BK": { "fecha": "2026-06-18", "intentos": 1 } }
+        let infoPatente = registroCargas[patenteCliente] || { fecha: "", intentos: 0 };
+
+        // Si la fecha guardada es distinta a hoy, reseteamos los intentos
+        if (infoPatente.fecha !== hoy) {
+            infoPatente = { fecha: hoy, intentos: 0 };
         }
 
-        registroCargas[patenteCliente] = ahora;
-        localStorage.setItem('gnc_registro_patentes', JSON.stringify(registroCargas));
+        // Validamos si ya llegó al límite de 2 veces
+        if (infoPatente.intentos >= 2) {
+            msgError.innerText = `⚠️ La patente ${patenteCliente} ya utilizó sus 2 oportunidades de hoy.`;
+            msgError.style.display = 'block';
+            return;
+        }
 
+        // Sumamos el intento y guardamos
+        infoPatente.intentos += 1;
+        registroCargas[patenteCliente] = infoPatente;
+        localStorage.setItem('gnc_registro_diario', JSON.stringify(registroCargas));
+
+        // Lógica de sorteo (mantiene la misma que tenías)
         const rand = Math.random() * 100;
-
         if (rand < 5) {
             premioAsignado = "15%"; 
         } else if (rand < 20) {
